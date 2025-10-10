@@ -7,12 +7,14 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # 认证配置（按优先级选择其一）：
-      # 最高优先级：固定API密钥（推荐用于生产环境）
-      - FACTORY_API_KEY=${FACTORY_API_KEY}
-      # 次优先级：refresh token自动刷新机制
-      - DROID_REFRESH_KEY=${DROID_REFRESH_KEY}
+      # 认证配置说明：
+      # 推荐模式：客户端在请求时通过 X-Factory-API-Key 请求头提供密钥（无需配置环境变量）
+      # 如需服务器共享密钥模式，可取消下面的注释：
+      # - FACTORY_API_KEY=${FACTORY_API_KEY}
+      # - DROID_REFRESH_KEY=${DROID_REFRESH_KEY}
+      
       # 可选：如果需要修改端口，在config.json中配置
+      - NODE_ENV=production
     volumes:
       # 可选：持久化auth.json以保存刷新的tokens
       - ./data:/app/data

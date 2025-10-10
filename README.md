@@ -4,11 +4,13 @@ OpenAI 兼容的 API 代理服务器，统一访问不同的 LLM 模型。
 
 ## 核心功能
 
-### 🔐 双重授权机制
-- **FACTORY_API_KEY优先级** - 环境变量设置固定API密钥，跳过自动刷新
+### 🔐 多层级授权机制
+- **客户端API密钥** - 支持客户端通过`X-Factory-API-Key`请求头提供自己的密钥（最高优先级）
+- **服务器共享密钥** - 环境变量`FACTORY_API_KEY`设置共享密钥，所有请求使用同一密钥
 - **令牌自动刷新** - WorkOS OAuth集成，系统每6小时自动刷新access_token
 - **客户端授权回退** - 无配置时使用客户端请求头的authorization字段
-- **智能优先级** - FACTORY_API_KEY > refresh_token > 客户端authorization
+- **智能优先级** - 客户端X-Factory-API-Key > 服务器FACTORY_API_KEY > refresh_token > 客户端authorization
+- **多用户支持** - 每个客户端可使用自己的密钥，无需服务器配置多个环境变量
 - **容错启动** - 无任何认证配置时不报错，继续运行支持客户端授权
 
 ### 🧠 智能推理级别控制
@@ -40,6 +42,12 @@ OpenAI 兼容的 API 代理服务器，统一访问不同的 LLM 模型。
 - 🌊 **智能流式处理** - 完全尊重客户端stream参数，支持流式和非流式响应
 - ⚙️ **灵活配置** - 通过配置文件自定义模型和端点
 
+## 📚 文档
+
+- [README.md](./README.md) - 本文档，功能概览和快速开始
+- [USAGE_EXAMPLES.md](./USAGE_EXAMPLES.md) - **详细的使用示例**（Python, JavaScript, Go, Rust 等）
+- [DOCKER_DEPLOY.md](./DOCKER_DEPLOY.md) - Docker 和云平台部署指南
+
 ## 安装
 
 安装项目依赖：
@@ -56,24 +64,50 @@ npm install
 
 ## 快速开始
 
-### 1. 配置认证（三种方式）
+### 1. 配置认证（多种方式）
 
-**优先级：FACTORY_API_KEY > refresh_token > 客户端authorization**
+**优先级：客户端X-Factory-API-Key > 服务器FACTORY_API_KEY > refresh_token > 客户端authorization**
 
+#### 方式1：客户端提供密钥（推荐，支持多用户）
 ```bash
-# 方式1：固定API密钥（最高优先级）
+# 客户端在请求时通过请求头提供自己的API密钥
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "X-Factory-API-Key: your_personal_api_key_here" \
+  -d '{
+    "model": "claude-opus-4-1-20250805",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+
+# 优势：
+# - 每个用户使用自己的密钥，互不干扰
+# - 服务器无需配置多个密钥
+# - 动态切换，灵活方便
+```
+
+#### 方式2：服务器共享密钥（适合单用户或团队共享）
+```bash
+# 在服务器环境变量中设置固定API密钥
 export FACTORY_API_KEY="your_factory_api_key_here"
 
-# 方式2：自动刷新令牌
-export DROID_REFRESH_KEY="your_refresh_token_here"
+# 所有客户端请求将使用这个共享密钥
+```
 
-# 方式3：配置文件 ~/.factory/auth.json
+#### 方式3：自动刷新令牌
+```bash
+export DROID_REFRESH_KEY="your_refresh_token_here"
+```
+
+#### 方式4：配置文件 ~/.factory/auth.json
+```json
 {
   "access_token": "your_access_token", 
   "refresh_token": "your_refresh_token"
 }
+```
 
-# 方式4：无配置（客户端授权）
+#### 方式5：无配置（客户端授权回退）
+```bash
 # 服务器将使用客户端请求头中的authorization字段
 ```
 
@@ -244,10 +278,25 @@ curl http://localhost:3000/v1/models
 
 #### 对话补全
 
+**使用客户端密钥（推荐）**：
+```bash
+curl http://localhost:3000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "X-Factory-API-Key: your_personal_api_key_here" \
+  -d '{
+    "model": "claude-opus-4-1-20250805",
+    "messages": [
+      {"role": "user", "content": "你好"}
+    ],
+    "stream": true
+  }'
+```
+
 **流式响应**（实时返回）：
 ```bash
 curl http://localhost:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "X-Factory-API-Key: your_api_key" \
   -d '{
     "model": "claude-opus-4-1-20250805",
     "messages": [
@@ -261,6 +310,7 @@ curl http://localhost:3000/v1/chat/completions \
 ```bash
 curl http://localhost:3000/v1/chat/completions \
   -H "Content-Type: application/json" \
+  -H "X-Factory-API-Key: your_api_key" \
   -d '{
     "model": "claude-opus-4-1-20250805",
     "messages": [
@@ -269,6 +319,8 @@ curl http://localhost:3000/v1/chat/completions \
     "stream": false
   }'
 ```
+
+> 💡 **提示**：如果服务器已配置 `FACTORY_API_KEY` 环境变量，可以省略 `X-Factory-API-Key` 请求头
 
 **支持的参数：**
 - `model` - 模型 ID（必需）
@@ -284,28 +336,49 @@ curl http://localhost:3000/v1/chat/completions \
 
 ### 如何配置授权机制？
 
-droid2api支持三级授权优先级：
+droid2api支持多层级授权优先级：
 
-1. **FACTORY_API_KEY**（最高优先级）
+1. **客户端提供密钥**（最高优先级，推荐多用户场景）
+   ```bash
+   # 在请求时通过X-Factory-API-Key或X-API-Key请求头提供
+   curl http://localhost:3000/v1/chat/completions \
+     -H "X-Factory-API-Key: your_personal_api_key"
+   ```
+   **优势**：
+   - ✅ 每个用户使用独立密钥
+   - ✅ 服务器无需配置多个环境变量
+   - ✅ 密钥管理灵活，易于切换
+
+2. **服务器共享密钥**（适合单用户或团队共享）
    ```bash
    export FACTORY_API_KEY="your_api_key"
    ```
-   使用固定API密钥，停用自动刷新机制。
+   使用固定API密钥，所有请求共享，停用自动刷新机制。
 
-2. **refresh_token机制**
+3. **refresh_token机制**
    ```bash
    export DROID_REFRESH_KEY="your_refresh_token"
    ```
    自动刷新令牌，每6小时更新一次。
 
-3. **客户端授权**（fallback）
+4. **客户端授权**（fallback）
    无需配置，直接使用客户端请求头的authorization字段。
 
 ### 什么时候使用FACTORY_API_KEY？
 
-- **开发环境** - 使用固定密钥避免令牌过期问题
-- **CI/CD流水线** - 稳定的认证，不依赖刷新机制
-- **临时测试** - 快速设置，无需配置refresh_token
+#### 客户端提供密钥（X-Factory-API-Key）
+推荐用于：
+- 🌐 **多用户服务** - 每个用户使用自己的API密钥
+- 🔐 **密钥隔离** - 用户密钥互不干扰，安全性更高
+- 🔄 **动态切换** - 不同项目或环境使用不同密钥
+- 💼 **SaaS应用** - 客户端自主管理密钥
+
+#### 服务器配置密钥（环境变量）
+推荐用于：
+- 👤 **单用户环境** - 个人开发环境，简化配置
+- 👥 **团队共享** - 团队成员共享同一个API密钥
+- 🤖 **CI/CD流水线** - 稳定的认证，不依赖刷新机制
+- 🚀 **快速测试** - 无需每次请求都传递密钥
 
 ### 如何控制流式和非流式响应？
 

@@ -257,14 +257,22 @@ export async function initializeAuth() {
 /**
  * Get API key based on configured authorization method
  * @param {string} clientAuthorization - Authorization header from client request (optional)
+ * @param {string} clientFactoryApiKey - Factory API key from client request header (optional)
  */
-export async function getApiKey(clientAuthorization = null) {
-  // Priority 1: FACTORY_API_KEY environment variable
+export async function getApiKey(clientAuthorization = null, clientFactoryApiKey = null) {
+  // Priority 1: Client-provided FACTORY_API_KEY (highest priority for multi-user support)
+  if (clientFactoryApiKey && clientFactoryApiKey.trim() !== '') {
+    logInfo('Using FACTORY_API_KEY from client request header');
+    return `Bearer ${clientFactoryApiKey.trim()}`;
+  }
+  
+  // Priority 2: Server environment FACTORY_API_KEY (shared mode)
   if (authSource === 'factory_key' && factoryApiKey) {
+    logDebug('Using shared FACTORY_API_KEY from environment variable');
     return `Bearer ${factoryApiKey}`;
   }
   
-  // Priority 2: Refresh token mechanism
+  // Priority 3: Refresh token mechanism
   if (authSource === 'env' || authSource === 'file') {
     // Check if we need to refresh
     if (shouldRefresh()) {
@@ -279,12 +287,12 @@ export async function getApiKey(clientAuthorization = null) {
     return `Bearer ${currentApiKey}`;
   }
   
-  // Priority 3: Client authorization header
+  // Priority 4: Client authorization header (fallback)
   if (clientAuthorization) {
     logDebug('Using client authorization header');
     return clientAuthorization;
   }
   
   // No authorization available
-  throw new Error('No authorization available. Please configure FACTORY_API_KEY, refresh token, or provide client authorization.');
+  throw new Error('No authorization available. Please provide X-Factory-API-Key header, configure server FACTORY_API_KEY, refresh token, or provide authorization header.');
 }

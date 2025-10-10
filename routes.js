@@ -101,15 +101,17 @@ async function handleChatCompletions(req, res) {
 
     logInfo(`Routing to ${model.type} endpoint: ${endpoint.base_url}`);
 
-    // Get API key (will auto-refresh if needed)
+    // Get API key (supports client-provided factory key or server config)
     let authHeader;
     try {
-      authHeader = await getApiKey(req.headers.authorization);
+      // Extract factory key from client headers (x-factory-api-key or x-api-key)
+      const clientFactoryKey = req.headers['x-factory-api-key'] || req.headers['x-api-key'];
+      authHeader = await getApiKey(req.headers.authorization, clientFactoryKey);
     } catch (error) {
       logError('Failed to get API key', error);
-      return res.status(500).json({ 
-        error: 'API key not available',
-        message: 'Failed to get or refresh API key. Please check server logs.'
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please provide X-Factory-API-Key header with your API key, or configure server authentication.'
       });
     }
 
@@ -257,18 +259,17 @@ async function handleDirectResponses(req, res) {
 
     logInfo(`Direct forwarding to ${model.type} endpoint: ${endpoint.base_url}`);
 
-    // Get API key - support client x-api-key for anthropic endpoint
+    // Get API key (supports client-provided factory key or server config)
     let authHeader;
     try {
-      const clientAuthFromXApiKey = req.headers['x-api-key']
-        ? `Bearer ${req.headers['x-api-key']}`
-        : null;
-      authHeader = await getApiKey(req.headers.authorization || clientAuthFromXApiKey);
+      // Extract factory key from client headers (x-factory-api-key or x-api-key)
+      const clientFactoryKey = req.headers['x-factory-api-key'] || req.headers['x-api-key'];
+      authHeader = await getApiKey(req.headers.authorization, clientFactoryKey);
     } catch (error) {
       logError('Failed to get API key', error);
-      return res.status(500).json({ 
-        error: 'API key not available',
-        message: 'Failed to get or refresh API key. Please check server logs.'
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please provide X-Factory-API-Key header with your API key, or configure server authentication.'
       });
     }
 
@@ -392,18 +393,17 @@ async function handleDirectMessages(req, res) {
 
     logInfo(`Direct forwarding to ${model.type} endpoint: ${endpoint.base_url}`);
 
-    // Get API key - support client x-api-key for anthropic endpoint
+    // Get API key (supports client-provided factory key or server config)
     let authHeader;
     try {
-      const clientAuthFromXApiKey = req.headers['x-api-key']
-        ? `Bearer ${req.headers['x-api-key']}`
-        : null;
-      authHeader = await getApiKey(req.headers.authorization || clientAuthFromXApiKey);
+      // Extract factory key from client headers (x-factory-api-key or x-api-key)
+      const clientFactoryKey = req.headers['x-factory-api-key'] || req.headers['x-api-key'];
+      authHeader = await getApiKey(req.headers.authorization, clientFactoryKey);
     } catch (error) {
       logError('Failed to get API key', error);
-      return res.status(500).json({ 
-        error: 'API key not available',
-        message: 'Failed to get or refresh API key. Please check server logs.'
+      return res.status(401).json({ 
+        error: 'Authentication required',
+        message: 'Please provide X-Factory-API-Key header with your API key, or configure server authentication.'
       });
     }
 
