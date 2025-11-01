@@ -1,8 +1,9 @@
 {
   "port": 3000,
   "model_redirects": {
-    "claude-3-5-haiku-20241022": "claude-sonnet-4-5-20250929",
-    "claude-sonnet-4-5": "claude-sonnet-4-5-20250929"
+    "claude-3-5-haiku-20241022": "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-5": "claude-sonnet-4-5-20250929",
+    "gpt-5":"gpt-5-2025-08-07"
   },
   "endpoint": [
     {
@@ -18,6 +19,7 @@
       "base_url": "https://app.factory.ai/api/llm/o/v1/chat/completions"
     }
   ],
+  "proxies": [],
   "models": [
     {
       "name": "Opus 4.1",
@@ -26,8 +28,8 @@
       "reasoning": "auto"
     },
     {
-      "name": "Sonnet 4",
-      "id": "claude-sonnet-4-20250514",
+      "name": "Haiku 4.5",
+      "id": "claude-haiku-4-5-20251001",
       "type": "anthropic",
       "reasoning": "auto"
     },
@@ -56,6 +58,6 @@
     }
   ],
   "dev_mode": false,
-  "user_agent": "factory-cli/0.19.9",
+  "user_agent": "factory-cli/0.22.2",
   "system_prompt": "You are Droid, an AI software engineering agent built by Factory.\n\n"
 }
